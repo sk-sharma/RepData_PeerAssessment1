@@ -1,25 +1,117 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Course 5 Project 1"
+author: "SK Sharma"
+date: "September 28, 2018"
+output: html_document
 ---
+# Project 1
+
+## Code for reading in the dataset and/or processing the data.
+
+```{r}
+if(!dir.exists("c5p1")){dir.create("c5p1")}
+ setwd("./c5p1")
+url<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+ if(!file.exists("c5p1.zip")){download.file(url, destfile = "c5p1.zip")}
+ if(!file.exists("activity.csv")){unzip("c5p1.zip")}
+data<-read.csv("activity.csv", sep = ",", header = TRUE)
+head(data)
+```
+
+## Histogram of the total number of steps taken each day.
+
+```{r}
+dsteps<-tapply(data$steps, data$date, sum, na.rm=TRUE)
+head(dsteps)
+hist(dsteps, main = "Histogram of the total number of steps taken each day", xlab = "Numbers of steps taken")
+```
+
+## Mean and median number of steps taken each day.
+
+```{r}
+dsteps<-data.frame(dsteps)
+colnames(dsteps)[1]<-"Dates"
+mean(dsteps$Dates)
+median(dsteps$Dates)
+```
 
 
-## Loading and preprocessing the data
+## Time series plot of the average number of steps taken.
+
+```{r}
+dinterval<-tapply(data$steps, data$interval, mean, na.rm=TRUE)
+dinterval<-data.frame(dinterval)
+dataint<-data.frame(interval=row.names(dinterval), steps=dinterval, row.names = NULL)
+plot(as.numeric(as.character(dataint$interval)), dataint$dinterval, type="l", xlab="Interval", ylab="Mean Steps")
+```
+
+## The 5-minute interval that, on average, contains the maximum number of steps
+
+
+```{r}
+dataint[which.max(dataint$dinterval),]
+```
 
 
 
-## What is mean total number of steps taken per day?
+## 6.  The total number of missing values in the dataset (i.e. the total number of rows with \color{red}{\verb|NA|}NAs)
+
+
+```{r}
+sum(!complete.cases(data$steps))
+```
+
+## Code to describe and show a strategy for imputing missing data
+
+```{r}
+dataf<-data
+for(i in 1 : length(dataf$steps)){
+        if(is.na(dataf[i,1])){
+        r<-which(dataint$interval==dataf[i,3])
+        dataf[i,1]<-dataint[r,2]}
+        }
+head(dataf)
+```
+
+
+## Histogram of the total number of steps taken each day and  the mean and median total number of steps taken per day.
+        
+
+```{r}
+dfsteps<-data.frame(steps=tapply(dataf$steps, dataf$date, sum),date=levels(factor(dataf$date)),row.names = NULL)
+head(dfsteps)
+hist(dfsteps$steps, main = "Histogram of the total number of steps taken each day (Imputed Data)", xlab = "Numbers of steps taken")
+mean(dfsteps$steps)
+median(dfsteps$steps)
+```
+
+- Do these values differ from the estimates from the first part of the assignment?
+
+Data slightly differ one can observe this by comparing the means and meadians which increases in the imputed data.
+
+- What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+Impact is that the frequency in the imputed data in the 1 and 3 interval decrease. (one can observe this by compaing two histograms.)
 
 
 
-## What is the average daily activity pattern?
+
+## Creating a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r}
+dataw<-data.frame(cbind(dataf,Days=weekdays(as.Date(dataf$date))))
+dataw$Days<-ifelse(dataw$Days=="Saturday"|dataw$Days=="Sunday", "weekend","weekday")
+head(dataw)
+levels(as.factor(dataw$Days))
+```
 
 
+## Making a panel plot containing a time series plot  of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
 
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+library(dplyr)
+datap<-transform(dataw, Days=factor(Days))
+datafp<-aggregate(steps ~ interval + Days, datap, mean)
+library(lattice)
+xyplot(datafp$steps~datafp$interval|datafp$Days, layout=c(1,2), type="l", xlab = "Intervals", ylab = "Numbers of Steps")
+```
